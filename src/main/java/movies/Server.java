@@ -105,16 +105,7 @@ public class Server {
 	private static Map<CrewRole, Long> crewCountForMovie(List<Credit> credits) {
 		var credit = credits != null ? credits.get(0) : null;
 		return credit != null ?
-			credit.crewRole.stream().collect(Collectors.groupingBy(Server::parseRole, Collectors.counting())) : Map.of();
-	}
-
-	private static CrewRole parseRole(String inputRole) {
-		try {
-			return CrewRole.valueOf(inputRole);
-		} catch (IllegalArgumentException e) {
-			LOG.trace("Unknown role", e);
-			return CrewRole.Other;
-		}
+			credit.crewRole.stream().collect(Collectors.groupingBy(CrewRole::parseRole, Collectors.counting())) : Map.of();
 	}
 
 	private static Object moviesEndpoint(Request req, Response res) {
@@ -222,6 +213,15 @@ public class Server {
 
 		public static Map<String, CrewRole> ROLES_MAP =
 			Arrays.stream(CrewRole.class.getEnumConstants()).collect(Collectors.toMap(CrewRole::toString, Function.identity()));
+
+		public static CrewRole parseRole(String inputRole) {
+			try {
+				return CrewRole.valueOf(inputRole);
+			} catch (IllegalArgumentException e) {
+				LOG.trace("Unknown role", e);
+				return CrewRole.Other;
+			}
+		}
 	}
 	public record StatsResult(int matchedMovies, Map<CrewRole, Long> crewCount) { }
 }
