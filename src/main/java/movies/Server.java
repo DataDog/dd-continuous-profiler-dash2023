@@ -122,7 +122,7 @@ public class Server {
 
 	private static List<Movie> sortByDescReleaseDate(List<Movie> movies) {
 		var sortedMovies = new ArrayList<Movie>(movies);
-		Collections.sort(sortedMovies, Comparator.comparing((Movie m) -> {
+		sortedMovies.sort(Comparator.comparing((Movie m) -> {
 			try {
 				return LocalDate.parse(m.releaseDate);
 			} catch (Exception e) {
