@@ -128,8 +128,7 @@ public class Server {
 			} catch (Exception e) {
 				return LocalDate.MIN;
 			}
-		}));
-		Collections.reverse(sortedMovies);
+		}).reversed());
 		return sortedMovies;
 	}
 
