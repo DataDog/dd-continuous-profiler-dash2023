@@ -115,7 +115,7 @@ public class Server {
 		movies = sortByDescReleaseDate(movies);
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 		if (query != null) {
-			movies = movies.stream().filter(m -> Pattern.matches(".*" + query.toUpperCase() + ".*", m.title.toUpperCase())).toList();
+			movies = movies.stream().filter(m -> m.title.toUpperCase().matches(".*" + query.toUpperCase() + ".*")).toList();
 		}
 		return replyJSON(res, movies);
 	}
