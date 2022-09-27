@@ -7,7 +7,9 @@ import static spark.Spark.port;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -109,23 +111,26 @@ public class Server {
 	}
 
 	private static Object moviesEndpoint(Request req, Response res) {
-		var movies = MOVIES.get().stream();
+		var movies = MOVIES.get();
 		movies = sortByDescReleaseDate(movies);
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 		if (query != null) {
-			movies = movies.filter(m -> Pattern.matches(".*" + query.toUpperCase() + ".*", m.title.toUpperCase()));
+			movies = movies.stream().filter(m -> Pattern.matches(".*" + query.toUpperCase() + ".*", m.title.toUpperCase())).toList();
 		}
 		return replyJSON(res, movies);
 	}
 
-	private static Stream<Movie> sortByDescReleaseDate(Stream<Movie> movies) {
-		return movies.sorted(Comparator.comparing((Movie m) -> {
+	private static List<Movie> sortByDescReleaseDate(List<Movie> movies) {
+		var sortedMovies = new ArrayList<Movie>(movies);
+		Collections.sort(sortedMovies, Comparator.comparing((Movie m) -> {
 			try {
 				return LocalDate.parse(m.releaseDate);
 			} catch (Exception e) {
 				return LocalDate.MIN;
 			}
-		}).reversed());
+		}));
+		Collections.reverse(sortedMovies);
+		return sortedMovies;
 	}
 
 	private static Object oldMoviesEndpoint(Request req, Response res) {
