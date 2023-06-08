@@ -40,7 +40,7 @@ public class Server {
 	private static final Gson GSON = new GsonBuilder().setLenient().setPrettyPrinting().create();
 	private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
-	private static final Supplier<List<Movie>> MOVIES = Suppliers.memoize(Server::loadMovies);
+	private static final Supplier<List<Movie>> MOVIES = cache(Server::loadMovies);
 	private static final Supplier<List<Credit>> CREDITS = Server::loadCredits;
 	// CREDITS_BY_MOVIE_ID goes in here!
 
@@ -228,4 +228,6 @@ public class Server {
 		}
 	}
 	public record StatsResult(int matchedMovies, Map<CrewRole, Long> crewCount) { }
+
+	private static <T> Supplier<T> cache(Supplier<T> method) { return Suppliers.memoize(method); }
 }
