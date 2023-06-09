@@ -23,7 +23,10 @@ processResources {
 
 application {
     mainClass.set('movies.Server')
-    applicationDefaultJvmArgs = ['-Xmx3g', '-Xms3g']
+    applicationDefaultJvmArgs = [
+        "-Xmx3g",
+        "-Xms3g",
+    ]
 }
 
 java {
