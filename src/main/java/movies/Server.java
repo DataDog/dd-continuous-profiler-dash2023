@@ -215,7 +215,7 @@ public class Server {
 	public enum CrewRole {
 		Director, Writer, Screenplay, Editor, Animation, Other;
 
-		public static Map<String, CrewRole> ROLES_MAP =
+		public static final Map<String, CrewRole> ROLES_MAP =
 			Arrays.stream(CrewRole.class.getEnumConstants()).collect(Collectors.toMap(CrewRole::toString, Function.identity()));
 
 		public static CrewRole parseRole(String inputRole) {
