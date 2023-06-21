@@ -2,6 +2,7 @@ package movies;
 
 import static spark.Spark.exception;
 import static spark.Spark.get;
+import static spark.Spark.ipAddress;
 import static spark.Spark.port;
 
 import java.io.InputStreamReader;
@@ -29,7 +30,6 @@ import com.google.gson.reflect.TypeToken;
 
 import com.mongodb.client.MongoClients;
 import org.bson.Document;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,17 +46,17 @@ public class Server {
 
 	public static void main(String[] args) {
 		port(8081);
+		ipAddress("127.0.0.1");
 		get("/", Server::randomMovieEndpoint);
 		get("/credits", Server::creditsEndpoint);
 		get("/movies", Server::moviesEndpoint);
 		get("/old-movies", Server::oldMoviesEndpoint);
 		get("/stats", Server::statsEndpoint);
+		exception(Exception.class, (exception, request, response) -> exception.printStackTrace());
 
 		// Warm these up at application start
 		MOVIES.get();
 		CREDITS.get();
-
-		exception(Exception.class, (exception, request, response) -> exception.printStackTrace());
 
 		var version = System.getProperty("dd.version");
 		LOG.info("Running version " + (version != null ? version.toLowerCase() : "(not set)") + " with pid " + ProcessHandle.current().pid());
