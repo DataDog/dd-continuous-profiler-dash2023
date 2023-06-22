@@ -10,11 +10,11 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,8 +43,9 @@ public class Server {
 	private static final Supplier<List<Movie>> MOVIES = cache(Server::loadMovies);
 	private static final Supplier<List<Credit>> CREDITS = cache(Server::loadCredits);
 	private static final Supplier<Map<String, List<Credit>>> CREDITS_BY_MOVIE_ID = cache(() -> CREDITS.get().stream().collect(Collectors.groupingBy(c -> c.id)));
+    private static final ForkJoinPool threadPool = new ForkJoinPool(1);
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
 		port(8081);
 		ipAddress("127.0.0.1");
 		get("/", Server::randomMovieEndpoint);
@@ -92,12 +93,12 @@ public class Server {
 
 		var numberMatched = selectedMovies.size();
 		var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
-		var aggregatedStats =
-			statsForMovies
-				.flatMap(countMap -> countMap.entrySet().stream())
-				.collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
+        var statsFlattened = statsForMovies.flatMap(countMap -> countMap.entrySet().stream());
+        var aggregatedStats = threadPool.submit(() ->
+            statsFlattened.parallel().collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)))).join();
 
-		return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
+
+        return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
 	}
 
 	private static List<Credit> creditsForMovie(Movie movie) {
