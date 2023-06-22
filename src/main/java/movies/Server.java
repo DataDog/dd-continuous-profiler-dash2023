@@ -1,5 +1,6 @@
 package movies;
 
+import static java.util.concurrent.ForkJoinPool.defaultForkJoinWorkerThreadFactory;
 import static spark.Spark.exception;
 import static spark.Spark.get;
 import static spark.Spark.ipAddress;
@@ -15,6 +16,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,6 +30,7 @@ import java.util.zip.GZIPInputStream;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -39,6 +46,8 @@ import spark.Response;
 public class Server {
 	private static final Gson GSON = new GsonBuilder().setLenient().setPrettyPrinting().create();
 	private static final Logger LOG = LoggerFactory.getLogger(Server.class);
+
+	private static final ForkJoinPool customThreadPool = new ForkJoinPool(4);
 
 	private static final Supplier<List<Movie>> MOVIES = cache(Server::loadMovies);
 	private static final Supplier<List<Credit>> CREDITS = cache(Server::loadCredits);
@@ -79,7 +88,7 @@ public class Server {
 		return replyJSON(res, moviesWithCredits);
 	}
 
-	private static Object statsEndpoint(Request req, Response res) {
+	private static Object statsEndpoint(Request req, Response res) throws ExecutionException, InterruptedException {
 		var movies = MOVIES.get().stream();
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 
@@ -90,14 +99,16 @@ public class Server {
 
 		var selectedMovies = movies.toList();
 
+
 		var numberMatched = selectedMovies.size();
 		var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
 		var aggregatedStats =
 			statsForMovies
-				.flatMap(countMap -> countMap.entrySet().stream())
-				.collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
+				.flatMap(countMap -> countMap.entrySet().stream());
 
-		return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
+		var out = customThreadPool.submit(() -> aggregatedStats.parallel().collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)))).join();
+
+		return replyJSON(res, new StatsResult(numberMatched, out));
 	}
 
 	private static List<Credit> creditsForMovie(Movie movie) {
