@@ -9,3 +9,6 @@ build
 
 # Ignore dd-trace-java binary
 dd-java-agent.jar
+
+# Ignore log files
+*.log
