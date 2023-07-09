@@ -90,12 +90,12 @@ public class Server {
 
         var selectedMovies = movies.toList();
 
-            var numberMatched = selectedMovies.size();
-            var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
-            var aggregatedStats = statsForMovies
-                .flatMap(countMap -> countMap.entrySet().stream())
-                .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
-            return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
+        var numberMatched = selectedMovies.size();
+        var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
+        var aggregatedStats = statsForMovies
+            .flatMap(countMap -> countMap.entrySet().stream())
+            .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
+        return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
 	}
 
 	private static List<Credit> creditsForMovie(Movie movie) {
