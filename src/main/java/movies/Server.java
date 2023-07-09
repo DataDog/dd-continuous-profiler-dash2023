@@ -14,7 +14,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,9 +42,8 @@ public class Server {
 	private static final Supplier<List<Movie>> MOVIES = cache(Server::loadMovies);
 	private static final Supplier<List<Credit>> CREDITS = cache(Server::loadCredits);
 	private static final Supplier<Map<String, List<Credit>>> CREDITS_BY_MOVIE_ID = cache(() -> CREDITS.get().stream().collect(Collectors.groupingBy(c -> c.id)));
-		private static final ForkJoinPool threadPool = new ForkJoinPool(1);
 
-		public static void main(String[] args) {
+	public static void main(String[] args) {
 		port(8081);
 		ipAddress("127.0.0.1");
 		get("/", Server::randomMovieEndpoint);
@@ -80,7 +78,7 @@ public class Server {
 		return replyJSON(res, moviesWithCredits);
 	}
 
-	private static Object statsEndpoint(Request req, Response res) {
+	private static synchronized Object statsEndpoint(Request req, Response res) {
 		var movies = MOVIES.get().stream();
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 
@@ -89,16 +87,15 @@ public class Server {
 			movies = movies.filter(m -> m.title != null && p.matcher(m.title).find());
 		}
 
-		var selectedMovies = movies.toList();
 
-		var numberMatched = selectedMovies.size();
-		var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
-				var statsFlattened = statsForMovies.flatMap(countMap -> countMap.entrySet().stream());
-				var aggregatedStats = threadPool.submit(() ->
-						statsFlattened.parallel().collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)))).join();
+        var selectedMovies = movies.toList();
 
-
-				return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
+            var numberMatched = selectedMovies.size();
+            var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
+            var aggregatedStats = statsForMovies
+                .flatMap(countMap -> countMap.entrySet().stream())
+                .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
+            return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
 	}
 
 	private static List<Credit> creditsForMovie(Movie movie) {
