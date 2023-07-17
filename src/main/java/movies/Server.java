@@ -79,7 +79,7 @@ public class Server {
 		return replyJSON(res, moviesWithCredits);
 	}
 
-	private static Object statsEndpoint(Request req, Response res) {
+	private static synchronized Object statsEndpoint(Request req, Response res) {
 		var movies = MOVIES.get().stream();
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 
