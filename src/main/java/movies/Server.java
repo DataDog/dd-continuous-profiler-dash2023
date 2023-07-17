@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -87,15 +88,15 @@ public class Server {
 			movies = movies.filter(m -> m.title != null && p.matcher(m.title).find());
 		}
 
+		var selectedMovies = movies.toList();
 
-        	var selectedMovies = movies.toList();
-
-        	var numberMatched = selectedMovies.size();
-        	var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
-        	var aggregatedStats = statsForMovies
-            		.flatMap(countMap -> countMap.entrySet().stream())
-            		.collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
-        	return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
+		var numberMatched = selectedMovies.size();
+		var statsForMovies = selectedMovies.stream().map(movie -> crewCountForMovie(creditsForMovie(movie)));
+		var aggregatedStats =
+			statsForMovies
+				.flatMap(countMap -> countMap.entrySet().stream())
+				.collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.summingLong(Map.Entry::getValue)));
+		return replyJSON(res, new StatsResult(numberMatched, aggregatedStats));
 	}
 
 	private static List<Credit> creditsForMovie(Movie movie) {
