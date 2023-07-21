@@ -8,7 +8,7 @@
               <maxIndex>3</maxIndex>
             </rollingPolicy>
             <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-                <maxFileSize>10MB</maxFileSize>
+                <maxFileSize>2MB</maxFileSize>
             </triggeringPolicy>
             <encoder>
                 <pattern>[%level] %logger{0} - %msg%n</pattern>
