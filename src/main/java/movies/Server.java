@@ -46,7 +46,7 @@ public class Server {
 
 	public static void main(String[] args) {
 		port(8081);
-		ipAddress("127.0.0.1");
+		ipAddress("0.0.0.0");
 		get("/", Server::randomMovieEndpoint);
 		get("/credits", Server::creditsEndpoint);
 		get("/movies", Server::moviesEndpoint);
@@ -169,7 +169,7 @@ public class Server {
 
 	private static List<Credit> loadCredits() {
 		try (
-			var mongoClient = MongoClients.create()
+			var mongoClient = MongoClients.create("mongodb://movies-api-mongo:27017")
 		) {
 			var creditsCollection = mongoClient.getDatabase("moviesDB").getCollection("credits");
 			return StreamSupport.stream(creditsCollection.find().batchSize(5_000).map(Credit::new).spliterator(), false).toList();
