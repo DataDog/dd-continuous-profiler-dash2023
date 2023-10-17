@@ -12,3 +12,6 @@ dd-java-agent.jar
 
 # Ignore log files
 *.log
+
+# Docker secrets
+docker.env

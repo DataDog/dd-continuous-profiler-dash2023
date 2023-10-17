@@ -6,3 +6,23 @@ services:
     - ./mongo-seed:/docker-entrypoint-initdb.d
     ports:
     - 127.0.0.1:27017:27017/tcp
+  movies-api-java:
+    image: movies-api-java
+    environment:
+      DD_AGENT_HOST: 'datadog-agent'
+    ports:
+    - 127.0.0.1:8081:8081/tcp 
+  datadog-agent:
+    image: datadog/agent:latest
+    env_file:
+      - docker.env
+    environment:
+      DD_SITE: 'datad0g.com'
+      DD_APM_ENABLED: 'true'
+      DD_APM_NON_LOCAL_TRAFFIC: 'true'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+    expose:
+      - "8126"
