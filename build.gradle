@@ -26,6 +26,16 @@ application {
     applicationDefaultJvmArgs = [
         "-Xmx3g",
         "-Xms3g",
+        "-javaagent:dd-java-agent.jar",
+        "-Ddd.profiling.enabled=true",
+        "-XX:FlightRecorderOptions=stackdepth=256",
+        "-Ddd.logs.injection=true",
+        "-Ddd.trace.sample.rate=1",
+        "-Ddd.service=movies-api-java",
+        "-Ddd.env=prod",
+        // Tag each run with a different version
+        "-Ddd.version=${LocalDateTime.now().withNano(0)}",
+        "-Ddd.profiling.ddprof.wall.enabled=true"
     ]
 }
 

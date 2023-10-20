@@ -5,16 +5,22 @@ import static spark.Spark.get;
 import static spark.Spark.ipAddress;
 import static spark.Spark.port;
 
+import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -44,7 +50,82 @@ public class Server {
 	private static final Supplier<List<Credit>> CREDITS = Server::loadCredits;
 	// CREDITS_BY_MOVIE_ID goes in here!
 
+	private static final class EchoServer extends Thread {
+		private static final int ECHO_PORT = 56789;
+		private final ServerSocket serverSocket;
+		private boolean running = false;
+
+		private EchoServer() {
+			try {
+				serverSocket = new ServerSocket(ECHO_PORT);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			setName("Echo server");
+			start();
+		}
+
+		public void stopServer() {
+			running = false;
+			interrupt();
+		}
+
+		@Override
+		public void run() {
+			running = true;
+			while (running) {
+				try (var socket = serverSocket.accept();
+					 var in = new BufferedReader(
+							 new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+					 var out = new PrintWriter(socket.getOutputStream(), false, StandardCharsets.UTF_8)) {
+					var line = in.readLine();
+					while (line != null && !line.isEmpty()) {
+						busyWork(Duration.ofMillis(50));
+						out.println("Echo: " + line);
+						System.out.println("Server sent line");
+						out.flush();
+						line = in.readLine();
+					}
+				} catch (IOException e) {
+					System.out.println("Exception when handling connection" +  e);
+				}
+			}
+		}
+
+		public static String makeRequest() {
+			try (var socket = new Socket("127.0.0.1", ECHO_PORT);
+				 var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+				 var out = new PrintWriter(socket.getOutputStream(), false, StandardCharsets.UTF_8)) {
+				out.println("first line");
+				out.flush();
+				var firstLine = in.readLine();
+				out.println("second line");
+				out.flush();
+				var secondLine = in.readLine();
+				return firstLine + " " + secondLine;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		private static final ThreadLocal<Long> BUSY_COUNTER = ThreadLocal
+				.withInitial(() -> ThreadLocalRandom.current().nextLong());
+
+		private static Void busyWork(Duration duration) {
+			var random = ThreadLocalRandom.current();
+			var counter = BUSY_COUNTER.get();
+			var startTime = System.nanoTime();
+			while (System.nanoTime() - startTime < duration.toNanos()) {
+				// Just busy waiting
+				counter ^= random.nextLong();
+			}
+			BUSY_COUNTER.set(counter);
+			return null;
+		}
+	}
+
 	public static void main(String[] args) {
+		var echoServer = new EchoServer();
 		port(8081);
 		ipAddress("0.0.0.0");
 		get("/", Server::randomMovieEndpoint);
@@ -52,6 +133,7 @@ public class Server {
 		get("/movies", Server::moviesEndpoint);
 		get("/old-movies", Server::oldMoviesEndpoint);
 		get("/stats", Server::statsEndpoint);
+
 		exception(Exception.class, (exception, request, response) -> exception.printStackTrace());
 
 		// Warm these up at application start
@@ -110,8 +192,10 @@ public class Server {
 			credit.crewRole.stream().collect(Collectors.groupingBy(CrewRole::parseRole, Collectors.counting())) : Map.of();
 	}
 
-	private static Object moviesEndpoint(Request req, Response res) {
+	private static synchronized Object moviesEndpoint(Request req, Response res) throws InterruptedException, IOException {
 		var movies = MOVIES.get();
+		var responseString = EchoServer.makeRequest();
+
 		movies = sortByDescReleaseDate(movies);
 		var query = req.queryParamOrDefault("q", req.queryParams("query"));
 		if (query != null) {
